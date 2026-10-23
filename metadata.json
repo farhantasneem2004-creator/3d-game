@@ -1,0 +1,6 @@
+{
+  "name": "3D Android Platformer",
+  "description": "Playable 3D platformer featuring custom 3D character loading via OBJ/MTL, third-person camera, virtual touch controls, physics, and exportable Android Kotlin Jetpack Compose WebView project.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

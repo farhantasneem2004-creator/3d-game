@@ -1,0 +1,42 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <defs>
+    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#0f172a" />
+      <stop offset="50%" stop-color="#0284c7" />
+      <stop offset="100%" stop-color="#0369a1" />
+    </linearGradient>
+    <linearGradient id="accent" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#f59e0b" />
+      <stop offset="100%" stop-color="#fbbf24" />
+    </linearGradient>
+    <linearGradient id="glow" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#38bdf8" />
+      <stop offset="100%" stop-color="#0284c7" />
+    </linearGradient>
+  </defs>
+
+  <!-- Background rounded rect -->
+  <rect width="512" height="512" rx="110" fill="url(#bg)" />
+
+  <!-- Outer Ring / Platform Base -->
+  <ellipse cx="256" cy="380" rx="180" ry="50" fill="#1e293b" opacity="0.8" />
+  <ellipse cx="256" cy="370" rx="160" ry="40" fill="#38b000" />
+  <ellipse cx="256" cy="365" rx="140" ry="32" fill="#4ade80" opacity="0.6" />
+
+  <!-- 3D Platformer Hero Helmet & Visor -->
+  <circle cx="256" cy="210" r="95" fill="#1e293b" stroke="#38bdf8" stroke-width="8" />
+  <!-- Helmet Visor Glowing -->
+  <path d="M 190 205 Q 256 185 322 205 Q 315 240 256 245 Q 197 240 190 205 Z" fill="url(#glow)" />
+  <!-- Helmet Crest / Fin -->
+  <path d="M 242 110 L 270 110 L 265 145 L 247 145 Z" fill="url(#accent)" />
+  <!-- Ear plates -->
+  <rect x="150" y="195" width="16" height="36" rx="6" fill="url(#accent)" />
+  <rect x="346" y="195" width="16" height="36" rx="6" fill="url(#accent)" />
+
+  <!-- Floating Golden Coin -->
+  <circle cx="370" cy="120" r="38" fill="url(#accent)" stroke="#d97706" stroke-width="5" />
+  <polygon points="370,95 382,112 402,114 386,128 392,148 370,136 348,148 354,128 338,114 358,112" fill="#fef08a" />
+
+  <!-- Joystick Accent Arrow -->
+  <path d="M 110 320 L 140 300 L 140 312 L 180 312 L 180 328 L 140 328 L 140 340 Z" fill="#38bdf8" opacity="0.8" />
+</svg>

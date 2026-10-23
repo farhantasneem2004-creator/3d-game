@@ -1,0 +1,487 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <title>3D Android Platformer</title>
+  <style>
+    * {
+      box-sizing: border-box;
+      user-select: none;
+      -webkit-user-select: none;
+      touch-action: none;
+      margin: 0;
+      padding: 0;
+    }
+    html, body {
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      background: #000;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    }
+    #game-container {
+      width: 100%;
+      height: 100%;
+      position: absolute;
+      top: 0;
+      left: 0;
+    }
+    /* Touch controls overlay */
+    .controls-overlay {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      pointer-events: none;
+    }
+    .hud-top {
+      position: absolute;
+      top: 16px;
+      left: 20px;
+      right: 20px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      pointer-events: auto;
+    }
+    .hud-badge {
+      background: rgba(15, 23, 42, 0.75);
+      backdrop-filter: blur(8px);
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      border-radius: 9999px;
+      padding: 6px 14px;
+      color: #fff;
+      font-weight: 700;
+      font-size: 14px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .joystick-zone {
+      position: absolute;
+      bottom: 24px;
+      left: 24px;
+      width: 130px;
+      height: 130px;
+      background: rgba(15, 23, 42, 0.6);
+      border: 2px solid rgba(56, 189, 248, 0.4);
+      border-radius: 50%;
+      pointer-events: auto;
+    }
+    .joystick-knob {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      width: 50px;
+      height: 50px;
+      background: #0284c7;
+      border: 2px solid #7dd3fc;
+      border-radius: 50%;
+      transform: translate(-50%, -50%);
+      box-shadow: 0 0 12px rgba(56, 189, 248, 0.6);
+    }
+    .action-zone {
+      position: absolute;
+      bottom: 24px;
+      right: 24px;
+      display: flex;
+      gap: 16px;
+      align-items: flex-end;
+      pointer-events: auto;
+    }
+    .action-btn {
+      width: 64px;
+      height: 64px;
+      border-radius: 50%;
+      border: none;
+      color: #fff;
+      font-weight: 700;
+      font-size: 13px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 4px 14px rgba(0,0,0,0.4);
+      active: scale(0.92);
+    }
+    .btn-jump { background: #10b981; border: 2px solid #6ee7b7; width: 74px; height: 74px; font-size: 15px; }
+    .btn-run { background: #f59e0b; border: 2px solid #fde68a; }
+    .btn-attack { background: #ef4444; border: 2px solid #fca5a5; }
+    /* Loading overlay */
+    #loading-overlay {
+      position: absolute;
+      inset: 0;
+      background: #090d16;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      color: #fff;
+      z-index: 99;
+    }
+    .loader-bar-bg {
+      width: 260px;
+      height: 10px;
+      background: #1e293b;
+      border-radius: 5px;
+      overflow: hidden;
+      margin-top: 16px;
+    }
+    .loader-bar-fill {
+      width: 0%;
+      height: 100%;
+      background: #38bdf8;
+      transition: width 0.3s;
+    }
+  </style>
+  <!-- Three.js + Loaders bundled for standalone offline APK execution -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/MTLLoader.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/OBJLoader.js"></script>
+</head>
+<body>
+  <div id="game-container"></div>
+
+  <div id="loading-overlay">
+    <h2 style="font-size: 20px; font-weight: 800; letter-spacing: 1px; color: #38bdf8;">3D ANDROID PLATFORMER</h2>
+    <p id="loading-text" style="margin-top: 12px; font-size: 13px; color: #94a3b8;">Loading 3D character model...</p>
+    <div class="loader-bar-bg">
+      <div id="loader-bar" class="loader-bar-fill"></div>
+    </div>
+  </div>
+
+  <div class="controls-overlay">
+    <div class="hud-top">
+      <div style="display: flex; gap: 10px;">
+        <div class="hud-badge" id="hud-hp">❤️ 3 / 3</div>
+        <div class="hud-badge" id="hud-coins">🪙 0 / 10</div>
+      </div>
+      <div class="hud-badge" id="hud-score">SCORE: 0</div>
+    </div>
+
+    <div class="joystick-zone" id="joystick-base">
+      <div class="joystick-knob" id="joystick-knob"></div>
+    </div>
+
+    <div class="action-zone">
+      <button class="action-btn btn-run" id="btn-run">RUN</button>
+      <button class="action-btn btn-attack" id="btn-attack">STRIKE</button>
+      <button class="action-btn btn-jump" id="btn-jump">JUMP</button>
+    </div>
+  </div>
+
+  <script>
+    // WebAppInterface Haptic feedback bridge
+    function triggerHaptic(ms) {
+      if (window.AndroidNative && window.AndroidNative.triggerHapticFeedback) {
+        window.AndroidNative.triggerHapticFeedback(ms);
+      }
+    }
+
+    // Touch joystick handling
+    const base = document.getElementById('joystick-base');
+    const knob = document.getElementById('joystick-knob');
+    let joyX = 0, joyY = 0;
+    let touchId = null;
+
+    base.addEventListener('touchstart', (e) => {
+      if (touchId === null) {
+        touchId = e.changedTouches[0].identifier;
+        updateJoy(e.changedTouches[0]);
+      }
+    });
+
+    window.addEventListener('touchmove', (e) => {
+      for (let i = 0; i < e.changedTouches.length; i++) {
+        if (e.changedTouches[i].identifier === touchId) {
+          updateJoy(e.changedTouches[i]);
+          break;
+        }
+      }
+    });
+
+    const endJoy = (e) => {
+      for (let i = 0; i < e.changedTouches.length; i++) {
+        if (e.changedTouches[i].identifier === touchId) {
+          touchId = null;
+          joyX = 0; joyY = 0;
+          knob.style.transform = `translate(-50%, -50%)`;
+          break;
+        }
+      }
+    };
+    window.addEventListener('touchend', endJoy);
+    window.addEventListener('touchcancel', endJoy);
+
+    function updateJoy(touch) {
+      const rect = base.getBoundingClientRect();
+      const centerX = rect.left + rect.width / 2;
+      const centerY = rect.top + rect.height / 2;
+      const dx = touch.clientX - centerX;
+      const dy = touch.clientY - centerY;
+      const dist = Math.hypot(dx, dy);
+      const maxR = rect.width / 2;
+
+      const clampedDist = Math.min(dist, maxR);
+      const angle = Math.atan2(dy, dx);
+      joyX = (Math.cos(angle) * clampedDist) / maxR;
+      joyY = (Math.sin(angle) * clampedDist) / maxR;
+
+      knob.style.transform = `translate(calc(-50% + ${joyX * maxR}px), calc(-50% + ${joyY * maxR}px))`;
+    }
+
+    // Button states
+    let isJumping = false, isRunning = false, isAttacking = false;
+    const btnJump = document.getElementById('btn-jump');
+    const btnRun = document.getElementById('btn-run');
+    const btnAttack = document.getElementById('btn-attack');
+
+    btnJump.addEventListener('touchstart', (e) => { e.preventDefault(); isJumping = true; triggerHaptic(25); });
+    btnJump.addEventListener('touchend', (e) => { e.preventDefault(); isJumping = false; });
+
+    btnRun.addEventListener('touchstart', (e) => { e.preventDefault(); isRunning = !isRunning; triggerHaptic(15); btnRun.style.opacity = isRunning ? "1" : "0.6"; });
+
+    btnAttack.addEventListener('touchstart', (e) => { e.preventDefault(); isAttacking = true; triggerHaptic(35); setTimeout(() => isAttacking = false, 300); });
+
+    // Procedural Audio Engine
+    const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    function playBeep(f1, f2, dur) {
+      if (audioCtx.state === 'suspended') audioCtx.resume();
+      const osc = audioCtx.createOscillator();
+      const gain = audioCtx.createGain();
+      osc.frequency.setValueAtTime(f1, audioCtx.currentTime);
+      osc.frequency.exponentialRampToValueAtTime(f2, audioCtx.currentTime + dur);
+      gain.gain.setValueAtTime(0.2, audioCtx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + dur);
+      osc.connect(gain); gain.connect(audioCtx.destination);
+      osc.start(); osc.stop(audioCtx.currentTime + dur);
+    }
+
+    // Scene & Renderer
+    const container = document.getElementById('game-container');
+    const scene = new THREE.Scene();
+    scene.background = new THREE.Color(0x7dd3fc);
+    scene.fog = new THREE.FogExp2(0x7dd3fc, 0.018);
+
+    const camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 500);
+    const renderer = new THREE.WebGLRenderer({ antialias: true });
+    renderer.setSize(window.innerWidth, window.innerHeight);
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    renderer.shadowMap.enabled = true;
+    renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+    container.appendChild(renderer.domElement);
+
+    // Lights
+    const hemi = new THREE.HemisphereLight(0xffffff, 0x38bdf8, 0.7);
+    scene.add(hemi);
+    const dir = new THREE.DirectionalLight(0xffedd5, 1.3);
+    dir.position.set(15, 30, 15);
+    dir.castShadow = true;
+    scene.add(dir);
+
+    // Level Platforms
+    const platforms = [];
+    function addPlat(x, y, z, w, h, d, color = 0x38b000) {
+      const mesh = new THREE.Mesh(
+        new THREE.BoxGeometry(w, h, d),
+        new THREE.MeshStandardMaterial({ color, roughness: 0.7 })
+      );
+      mesh.position.set(x, y, z);
+      mesh.receiveShadow = true;
+      mesh.castShadow = true;
+      scene.add(mesh);
+      platforms.push({ mesh, bbox: new THREE.Box3().setFromObject(mesh) });
+      return mesh;
+    }
+
+    // Starting Haven
+    addPlat(0, 0, 0, 8, 1, 8, 0x38b000);
+    addPlat(0, 0.4, 7, 3.5, 1, 3.5, 0x64748b);
+    addPlat(3.5, 0.8, 11, 3, 1, 3, 0x38b000);
+    addPlat(-3.5, 1.2, 15, 3, 1, 3, 0x38b000);
+    // Moving Platform
+    const movingMesh = addPlat(0, 1.5, 20.5, 3, 0.6, 3, 0x0284c7);
+    // Upper Plateau & Finish
+    addPlat(0, 2.0, 26, 8, 1, 6, 0x64748b);
+    addPlat(0, 3.0, 34, 3, 0.6, 3, 0x0284c7);
+    addPlat(0, 5.0, 42, 8, 1, 8, 0x38b000);
+
+    // Coins
+    const coins = [];
+    function addCoin(x, y, z) {
+      const geo = new THREE.CylinderGeometry(0.3, 0.3, 0.1, 10);
+      geo.rotateX(Math.PI / 2);
+      const mesh = new THREE.Mesh(geo, new THREE.MeshStandardMaterial({ color: 0xfacc15, metalness: 0.8, roughness: 0.2 }));
+      mesh.position.set(x, y, z);
+      scene.add(mesh);
+      coins.push({ mesh, collected: false });
+    }
+    addCoin(0, 1.6, 7);
+    addCoin(3.5, 2.0, 11);
+    addCoin(-3.5, 2.4, 15);
+    addCoin(0, 2.5, 20.5);
+    addCoin(0, 3.2, 26);
+    addCoin(0, 4.0, 34);
+    addCoin(0, 6.2, 42);
+
+    // Character Group & Model Loading
+    const charRoot = new THREE.Group();
+    scene.add(charRoot);
+
+    const mtlLoader = new THREE.MTLLoader();
+    mtlLoader.setPath('models/');
+    mtlLoader.load('3DModel.mtl', (materials) => {
+      materials.preload();
+      const objLoader = new THREE.OBJLoader();
+      objLoader.setMaterials(materials);
+      objLoader.setPath('models/');
+      objLoader.load('3DModel.obj', (obj) => {
+        // Calculate bbox and normalize
+        const box = new THREE.Box3().setFromObject(obj);
+        const size = new THREE.Vector3();
+        box.getSize(size);
+        const center = new THREE.Vector3();
+        box.getCenter(center);
+        const scale = 1.8 / (size.y || 1);
+        obj.scale.setScalar(scale);
+        obj.position.set(-center.x * scale, -box.min.y * scale, -center.z * scale);
+
+        obj.traverse((c) => {
+          if (c.isMesh) {
+            c.castShadow = true;
+            c.receiveShadow = true;
+          }
+        });
+
+        charRoot.add(obj);
+
+        // Hide loader
+        document.getElementById('loading-overlay').style.display = 'none';
+      }, (xhr) => {
+        if (xhr.lengthComputable) {
+          const pct = Math.round((xhr.loaded / xhr.total) * 100);
+          document.getElementById('loader-bar').style.width = pct + '%';
+        }
+      }, (err) => {
+        console.error('Failed to load OBJ:', err);
+        document.getElementById('loading-text').innerHTML =
+          '<span style="color:#ef4444;font-weight:bold;">Awaiting 3DModel.obj</span><br><br>' +
+          '<span style="color:#94a3b8;font-size:11px;">Please copy <b>3DModel.obj</b>, <b>3DModel.mtl</b>, and <b>3DModel.jpg</b> into:<br>' +
+          '<code style="color:#38bdf8;">android/app/src/main/assets/game/models/</code><br>then re-build the APK.</span>';
+      });
+    }, undefined, (err) => {
+      console.error('Failed to load MTL:', err);
+      document.getElementById('loading-text').innerHTML =
+        '<span style="color:#ef4444;font-weight:bold;">Awaiting Character Assets</span><br><br>' +
+        '<span style="color:#94a3b8;font-size:11px;">Copy your three files into:<br>' +
+        '<code style="color:#38bdf8;">android/app/src/main/assets/game/models/</code><br><br>' +
+        '• 3DModel.obj<br>• 3DModel.mtl<br>• 3DModel.jpg</span>';
+    });
+
+    // Player Physics State
+    const playerPos = new THREE.Vector3(0, 1.2, 0);
+    const playerVel = new THREE.Vector3(0, 0, 0);
+    let playerFacing = 0;
+    let isGrounded = true;
+    let hp = 3, score = 0, collectedCoins = 0;
+
+    // Game loop
+    let lastTime = performance.now();
+    function animate() {
+      requestAnimationFrame(animate);
+      const now = performance.now();
+      const dt = Math.min(0.045, (now - lastTime) / 1000);
+      lastTime = now;
+
+      // Moving platform update
+      movingMesh.position.x = Math.sin(now * 0.002) * 3.5;
+      platforms[4].bbox.setFromObject(movingMesh);
+
+      // Coins spin
+      coins.forEach((c) => {
+        if (!c.collected) {
+          c.mesh.rotation.y += 3.0 * dt;
+          if (playerPos.distanceTo(c.mesh.position) < 1.0) {
+            c.collected = true;
+            c.mesh.visible = false;
+            collectedCoins++;
+            score += 100;
+            playBeep(987, 1318, 0.2);
+            document.getElementById('hud-coins').innerText = `🪙 ${collectedCoins} / ${coins.length}`;
+            document.getElementById('hud-score').innerText = `SCORE: ${score}`;
+          }
+        }
+      });
+
+      // Player Movement
+      const moveSpeed = isRunning ? 8.0 : 5.0;
+      if (Math.hypot(joyX, joyY) > 0.1) {
+        playerVel.x = joyX * moveSpeed;
+        playerVel.z = joyY * moveSpeed;
+        playerFacing = Math.atan2(joyX, joyY);
+      } else {
+        playerVel.x *= 0.8;
+        playerVel.z *= 0.8;
+      }
+
+      // Jump & Gravity
+      if (isJumping && isGrounded) {
+        playerVel.y = 10.0;
+        isGrounded = false;
+        playBeep(180, 480, 0.18);
+      } else if (!isGrounded) {
+        playerVel.y -= 24.0 * dt;
+      }
+
+      playerPos.x += playerVel.x * dt;
+      playerPos.z += playerVel.z * dt;
+      playerPos.y += playerVel.y * dt;
+
+      // Platform collisions
+      let grounded = false;
+      platforms.forEach((p) => {
+        const b = p.bbox;
+        if (playerPos.x >= b.min.x - 0.4 && playerPos.x <= b.max.x + 0.4 &&
+            playerPos.z >= b.min.z - 0.4 && playerPos.z <= b.max.z + 0.4) {
+          if (playerPos.y >= b.max.y - 0.35 && playerPos.y <= b.max.y + 0.35 && playerVel.y <= 0) {
+            playerPos.y = b.max.y;
+            playerVel.y = 0;
+            grounded = true;
+          }
+        }
+      });
+      isGrounded = grounded;
+
+      // Void fall reset
+      if (playerPos.y < -8) {
+        playerPos.set(0, 1.2, 0);
+        playerVel.set(0, 0, 0);
+        hp = Math.max(0, hp - 1);
+        playBeep(240, 60, 0.3);
+        document.getElementById('hud-hp').innerText = `❤️ ${hp} / 3`;
+      }
+
+      // Update character transforms
+      charRoot.position.copy(playerPos);
+      charRoot.rotation.y = playerFacing;
+
+      // Camera follow
+      camera.position.x = playerPos.x - Math.sin(0) * 5.5;
+      camera.position.y = playerPos.y + 3.0;
+      camera.position.z = playerPos.z + 5.5;
+      camera.lookAt(playerPos.x, playerPos.y + 1.2, playerPos.z);
+
+      renderer.render(scene, camera);
+    }
+    animate();
+
+    window.addEventListener('resize', () => {
+      camera.aspect = window.innerWidth / window.innerHeight;
+      camera.updateProjectionMatrix();
+      renderer.setSize(window.innerWidth, window.innerHeight);
+    });
+  </script>
+</body>
+</html>
