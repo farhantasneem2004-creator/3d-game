@@ -30,6 +30,15 @@ export default function App() {
     loadingMessage: 'Loading 3D character assets...',
     errorMessage: null,
     characterStats: null,
+    weaponId: 'pistol',
+    weaponName: 'Combat Pistol',
+    weaponCategory: 'Handgun',
+    ammoInMag: 12,
+    reserveAmmo: 72,
+    magSize: 12,
+    isReloading: false,
+    isAiming: false,
+    hitMarkerTimer: 0,
   });
 
   const [showModelModal, setShowModelModal] = useState(false);
@@ -76,6 +85,11 @@ export default function App() {
     await gameEngineRef.current.loadCustomModelFromFiles(objFile, mtlFile, jpgFile);
   }, []);
 
+  const handleResetToDefault = useCallback(async () => {
+    if (!gameEngineRef.current) return;
+    await gameEngineRef.current.resetToDefaultCharacter();
+  }, []);
+
   const handleToggleSkeleton = useCallback((visible: boolean) => {
     setIsSkeletonVisible(visible);
     gameEngineRef.current?.setSkeletonVisibility(visible);
@@ -83,6 +97,22 @@ export default function App() {
 
   const handleSetTestAnimation = useCallback((anim: string | null) => {
     gameEngineRef.current?.setTestAnimation(anim);
+  }, []);
+
+  const handleApplyCustomMarkers = useCallback((markers: import('./game/RiggingSystem').MarkerPositions) => {
+    gameEngineRef.current?.applyCustomMarkers(markers);
+  }, []);
+
+  const handleExportGLB = useCallback(() => {
+    gameEngineRef.current?.exportRiggedGLB();
+  }, []);
+
+  const handleWeaponSwitch = useCallback((direction: 'next' | 'prev' | number) => {
+    gameEngineRef.current?.switchWeapon(direction);
+  }, []);
+
+  const handleReload = useCallback(() => {
+    gameEngineRef.current?.reloadWeapon();
   }, []);
 
   return (
@@ -160,6 +190,8 @@ export default function App() {
             onOpenInstallModal={() => setShowInstallModal(true)}
             isSimulatedDevice={isSimulatedDevice}
             onToggleSimulatedDevice={() => setIsSimulatedDevice((prev) => !prev)}
+            onSwitchWeapon={handleWeaponSwitch}
+            onReload={handleReload}
           />
         )}
 
@@ -169,6 +201,13 @@ export default function App() {
             input={gameEngineRef.current.input}
             onCameraDrag={handleCameraDrag}
             isPaused={hudState.isPaused || hudState.isGameOver || hudState.isVictory}
+            onSwitchWeapon={handleWeaponSwitch}
+            onReload={handleReload}
+            currentWeaponName={hudState.weaponName}
+            ammoInMag={hudState.ammoInMag}
+            reserveAmmo={hudState.reserveAmmo}
+            isReloading={hudState.isReloading}
+            isAiming={hudState.isAiming}
           />
         )}
 
@@ -212,10 +251,15 @@ export default function App() {
         {showModelModal && (
           <CharacterAssetModal
             stats={hudState.characterStats}
+            modelGroup={gameEngineRef.current?.getCharacterController().normalizedModel}
+            initialMarkers={gameEngineRef.current?.getCharacterController().currentMarkers}
             onClose={() => setShowModelModal(false)}
             onLoadCustomFiles={handleLoadCustomFiles}
+            onResetToDefault={handleResetToDefault}
             onToggleSkeleton={handleToggleSkeleton}
             onSetTestAnimation={handleSetTestAnimation}
+            onApplyCustomMarkers={handleApplyCustomMarkers}
+            onExportGLB={handleExportGLB}
             isSkeletonVisible={isSkeletonVisible}
           />
         )}

@@ -27,7 +27,6 @@
       top: 0;
       left: 0;
     }
-    /* Touch controls overlay */
     .controls-overlay {
       position: absolute;
       top: 0;
@@ -38,35 +37,43 @@
     }
     .hud-top {
       position: absolute;
-      top: 16px;
-      left: 20px;
-      right: 20px;
+      top: max(12px, env(safe-area-inset-top));
+      left: max(16px, env(safe-area-inset-left));
+      right: max(16px, env(safe-area-inset-right));
       display: flex;
       justify-content: space-between;
       align-items: center;
       pointer-events: auto;
     }
     .hud-badge {
-      background: rgba(15, 23, 42, 0.75);
-      backdrop-filter: blur(8px);
+      background: rgba(15, 23, 42, 0.85);
       border: 1px solid rgba(255, 255, 255, 0.15);
       border-radius: 9999px;
-      padding: 6px 14px;
+      padding: 5px 12px;
       color: #fff;
-      font-weight: 700;
-      font-size: 14px;
+      font-weight: 800;
+      font-size: 13px;
       display: flex;
       align-items: center;
       gap: 6px;
+      flex-shrink: 0;
+    }
+    .anim-badge {
+      background: rgba(2, 132, 199, 0.8);
+      border: 1px solid #38bdf8;
+      color: #fff;
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
     }
     .joystick-zone {
       position: absolute;
-      bottom: 24px;
-      left: 24px;
-      width: 130px;
-      height: 130px;
-      background: rgba(15, 23, 42, 0.6);
-      border: 2px solid rgba(56, 189, 248, 0.4);
+      bottom: max(18px, env(safe-area-inset-bottom));
+      left: max(18px, env(safe-area-inset-left));
+      width: 125px;
+      height: 125px;
+      background: rgba(15, 23, 42, 0.65);
+      border: 2px solid rgba(56, 189, 248, 0.45);
       border-radius: 50%;
       pointer-events: auto;
     }
@@ -74,8 +81,8 @@
       position: absolute;
       top: 50%;
       left: 50%;
-      width: 50px;
-      height: 50px;
+      width: 48px;
+      height: 48px;
       background: #0284c7;
       border: 2px solid #7dd3fc;
       border-radius: 50%;
@@ -84,32 +91,31 @@
     }
     .action-zone {
       position: absolute;
-      bottom: 24px;
-      right: 24px;
+      bottom: max(18px, env(safe-area-inset-bottom));
+      right: max(18px, env(safe-area-inset-right));
       display: flex;
-      gap: 16px;
+      gap: 14px;
       align-items: flex-end;
       pointer-events: auto;
     }
     .action-btn {
-      width: 64px;
-      height: 64px;
+      width: 60px;
+      height: 60px;
       border-radius: 50%;
       border: none;
       color: #fff;
-      font-weight: 700;
-      font-size: 13px;
+      font-weight: 800;
+      font-size: 12px;
       display: flex;
       flex-direction: column;
       align-items: center;
       justify-content: center;
       box-shadow: 0 4px 14px rgba(0,0,0,0.4);
-      active: scale(0.92);
+      flex-shrink: 0;
     }
-    .btn-jump { background: #10b981; border: 2px solid #6ee7b7; width: 74px; height: 74px; font-size: 15px; }
+    .btn-jump { background: #10b981; border: 2px solid #6ee7b7; width: 72px; height: 72px; font-size: 14px; }
     .btn-run { background: #f59e0b; border: 2px solid #fde68a; }
     .btn-attack { background: #ef4444; border: 2px solid #fca5a5; }
-    /* Loading overlay */
     #loading-overlay {
       position: absolute;
       inset: 0;
@@ -122,12 +128,12 @@
       z-index: 99;
     }
     .loader-bar-bg {
-      width: 260px;
-      height: 10px;
+      width: 240px;
+      height: 8px;
       background: #1e293b;
-      border-radius: 5px;
+      border-radius: 4px;
       overflow: hidden;
-      margin-top: 16px;
+      margin-top: 14px;
     }
     .loader-bar-fill {
       width: 0%;
@@ -136,7 +142,6 @@
       transition: width 0.3s;
     }
   </style>
-  <!-- Three.js + Loaders bundled for standalone offline APK execution -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/MTLLoader.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/OBJLoader.js"></script>
@@ -145,8 +150,8 @@
   <div id="game-container"></div>
 
   <div id="loading-overlay">
-    <h2 style="font-size: 20px; font-weight: 800; letter-spacing: 1px; color: #38bdf8;">3D ANDROID PLATFORMER</h2>
-    <p id="loading-text" style="margin-top: 12px; font-size: 13px; color: #94a3b8;">Loading 3D character model...</p>
+    <h2 style="font-size: 18px; font-weight: 800; letter-spacing: 1px; color: #38bdf8;">3D ANDROID PLATFORMER</h2>
+    <p id="loading-text" style="margin-top: 10px; font-size: 12px; color: #94a3b8;">Loading character & setting up AnimationMixer...</p>
     <div class="loader-bar-bg">
       <div id="loader-bar" class="loader-bar-fill"></div>
     </div>
@@ -154,9 +159,10 @@
 
   <div class="controls-overlay">
     <div class="hud-top">
-      <div style="display: flex; gap: 10px;">
+      <div style="display: flex; gap: 8px; align-items: center;">
         <div class="hud-badge" id="hud-hp">❤️ 3 / 3</div>
         <div class="hud-badge" id="hud-coins">🪙 0 / 10</div>
+        <div class="hud-badge anim-badge" id="hud-anim">POSE: IDLE</div>
       </div>
       <div class="hud-badge" id="hud-score">SCORE: 0</div>
     </div>
@@ -167,13 +173,12 @@
 
     <div class="action-zone">
       <button class="action-btn btn-run" id="btn-run">RUN</button>
-      <button class="action-btn btn-attack" id="btn-attack">STRIKE</button>
+      <button class="action-btn btn-attack" id="btn-attack">PUNCH</button>
       <button class="action-btn btn-jump" id="btn-jump">JUMP</button>
     </div>
   </div>
 
   <script>
-    // WebAppInterface Haptic feedback bridge
     function triggerHaptic(ms) {
       if (window.AndroidNative && window.AndroidNative.triggerHapticFeedback) {
         window.AndroidNative.triggerHapticFeedback(ms);
@@ -243,7 +248,30 @@
 
     btnRun.addEventListener('touchstart', (e) => { e.preventDefault(); isRunning = !isRunning; triggerHaptic(15); btnRun.style.opacity = isRunning ? "1" : "0.6"; });
 
-    btnAttack.addEventListener('touchstart', (e) => { e.preventDefault(); isAttacking = true; triggerHaptic(35); setTimeout(() => isAttacking = false, 300); });
+    btnAttack.addEventListener('touchstart', (e) => { e.preventDefault(); isAttacking = true; triggerHaptic(35); setTimeout(() => isAttacking = false, 350); });
+
+    // Keyboard support with correct forward orientation (W = forward towards platforms)
+    const keys = { forward: false, backward: false, left: false, right: false };
+    window.addEventListener('keydown', (e) => {
+      if (e.code === 'KeyW' || e.code === 'ArrowUp') keys.forward = true;
+      if (e.code === 'KeyS' || e.code === 'ArrowDown') keys.backward = true;
+      if (e.code === 'KeyA' || e.code === 'ArrowLeft') keys.left = true;
+      if (e.code === 'KeyD' || e.code === 'ArrowRight') keys.right = true;
+      if (e.code === 'Space') isJumping = true;
+      if (e.code === 'ShiftLeft' || e.code === 'ShiftRight') isRunning = true;
+      if (e.code === 'KeyJ' || e.code === 'Enter') {
+        isAttacking = true;
+        setTimeout(() => isAttacking = false, 350);
+      }
+    });
+    window.addEventListener('keyup', (e) => {
+      if (e.code === 'KeyW' || e.code === 'ArrowUp') keys.forward = false;
+      if (e.code === 'KeyS' || e.code === 'ArrowDown') keys.backward = false;
+      if (e.code === 'KeyA' || e.code === 'ArrowLeft') keys.left = false;
+      if (e.code === 'KeyD' || e.code === 'ArrowRight') keys.right = false;
+      if (e.code === 'Space') isJumping = false;
+      if (e.code === 'ShiftLeft' || e.code === 'ShiftRight') isRunning = false;
+    });
 
     // Procedural Audio Engine
     const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
@@ -281,7 +309,7 @@
     dir.castShadow = true;
     scene.add(dir);
 
-    // Level Platforms
+    // Level Platforms (Z runs from 0 forward to 42+)
     const platforms = [];
     function addPlat(x, y, z, w, h, d, color = 0x38b000) {
       const mesh = new THREE.Mesh(
@@ -296,14 +324,11 @@
       return mesh;
     }
 
-    // Starting Haven
     addPlat(0, 0, 0, 8, 1, 8, 0x38b000);
     addPlat(0, 0.4, 7, 3.5, 1, 3.5, 0x64748b);
     addPlat(3.5, 0.8, 11, 3, 1, 3, 0x38b000);
     addPlat(-3.5, 1.2, 15, 3, 1, 3, 0x38b000);
-    // Moving Platform
     const movingMesh = addPlat(0, 1.5, 20.5, 3, 0.6, 3, 0x0284c7);
-    // Upper Plateau & Finish
     addPlat(0, 2.0, 26, 8, 1, 6, 0x64748b);
     addPlat(0, 3.0, 34, 3, 0.6, 3, 0x0284c7);
     addPlat(0, 5.0, 42, 8, 1, 8, 0x38b000);
@@ -326,10 +351,120 @@
     addCoin(0, 4.0, 34);
     addCoin(0, 6.2, 42);
 
-    // Character Group & Model Loading
+    // -------------------------------------------------------------
+    // Character Root & AnimationMixer Setup
+    // -------------------------------------------------------------
     const charRoot = new THREE.Group();
     scene.add(charRoot);
 
+    // Sub-hierarchy for animation tracks (body, limbs, punching arm)
+    const animBody = new THREE.Group();
+    animBody.name = "Body";
+    charRoot.add(animBody);
+
+    const modelHolder = new THREE.Group();
+    modelHolder.name = "ModelHolder";
+    animBody.add(modelHolder);
+
+    // Setup THREE.AnimationMixer on charRoot
+    const mixer = new THREE.AnimationMixer(charRoot);
+    const actions = {};
+    let currentAnimName = 'idle';
+
+    function qEuler(x, y, z) {
+      const q = new THREE.Quaternion().setFromEuler(new THREE.Euler(x, y, z));
+      return [q.x, q.y, q.z, q.w];
+    }
+
+    // 1. Idle Clip (Real-world organic breathing & sway)
+    const idleTimes = [0, 1.0, 2.0];
+    const idleBodyTracks = [
+      new THREE.VectorKeyframeTrack('Body.position', idleTimes, [0, 0, 0, 0, 0.02, 0, 0, 0, 0]),
+      new THREE.QuaternionKeyframeTrack('Body.quaternion', idleTimes, [
+        ...qEuler(0, 0, 0),
+        ...qEuler(0.02, 0, 0),
+        ...qEuler(0, 0, 0)
+      ])
+    ];
+    const idleClip = new THREE.AnimationClip('idle', 2.0, idleBodyTracks);
+    actions.idle = mixer.clipAction(idleClip);
+
+    // 2. Walk Clip (Contrapposto bipedal locomotion, body bounce, sway)
+    const walkTimes = [0, 0.2, 0.4, 0.6, 0.8];
+    const walkBodyTracks = [
+      new THREE.VectorKeyframeTrack('Body.position', walkTimes, [
+        0, 0.03, 0,
+        0, 0, 0,
+        0, 0.03, 0,
+        0, 0, 0,
+        0, 0.03, 0
+      ]),
+      new THREE.QuaternionKeyframeTrack('Body.quaternion', walkTimes, [
+        ...qEuler(0.08, 0.08, -0.04),
+        ...qEuler(0.08, 0, 0),
+        ...qEuler(0.08, -0.08, 0.04),
+        ...qEuler(0.08, 0, 0),
+        ...qEuler(0.08, 0.08, -0.04)
+      ])
+    ];
+    const walkClip = new THREE.AnimationClip('walk', 0.8, walkBodyTracks);
+    actions.walk = mixer.clipAction(walkClip);
+
+    // 3. Jump Clip (Mid-air tuck physics & balance)
+    const jumpTimes = [0, 0.3, 0.7, 1.0];
+    const jumpBodyTracks = [
+      new THREE.VectorKeyframeTrack('Body.position', jumpTimes, [0, 0, 0, 0, 0.1, 0, 0, 0.05, 0, 0, 0, 0]),
+      new THREE.QuaternionKeyframeTrack('Body.quaternion', jumpTimes, [
+        ...qEuler(-0.05, 0, 0),
+        ...qEuler(-0.15, 0, 0),
+        ...qEuler(0.05, 0, 0),
+        ...qEuler(0, 0, 0)
+      ])
+    ];
+    const jumpClip = new THREE.AnimationClip('jump', 1.0, jumpBodyTracks);
+    actions.jump = mixer.clipAction(jumpClip);
+
+    // 4. Punch Clip (Explosive forward punch strike & hip torque)
+    const punchTimes = [0, 0.08, 0.16, 0.26, 0.35];
+    const punchBodyTracks = [
+      new THREE.VectorKeyframeTrack('Body.position', punchTimes, [
+        0, 0, 0,
+        0, -0.02, -0.05,
+        0, 0.02, 0.18,
+        0, 0, 0.05,
+        0, 0, 0
+      ]),
+      new THREE.QuaternionKeyframeTrack('Body.quaternion', punchTimes, [
+        ...qEuler(0, 0, 0),
+        ...qEuler(0.05, 0.25, 0),
+        ...qEuler(0.12, -0.35, 0),
+        ...qEuler(0.05, -0.1, 0),
+        ...qEuler(0, 0, 0)
+      ])
+    ];
+    const punchClip = new THREE.AnimationClip('punch', 0.35, punchBodyTracks);
+    actions.punch = mixer.clipAction(punchClip);
+    actions.punch.setLoop(THREE.LoopOnce, 1);
+    actions.punch.clampWhenFinished = false;
+
+    // Start in idle
+    actions.idle.play();
+
+    function setAnimationState(name) {
+      if (currentAnimName === name) return;
+      const prev = actions[currentAnimName];
+      const next = actions[name];
+      if (!next) return;
+
+      const dur = name === 'punch' ? 0.08 : (name === 'jump' ? 0.12 : 0.2);
+      if (prev) prev.fadeOut(dur);
+      if (name === 'punch') next.reset();
+      next.reset().fadeIn(dur).play();
+      currentAnimName = name;
+      document.getElementById('hud-anim').innerText = `POSE: ${name.toUpperCase()}`;
+    }
+
+    // Load Character Assets into modelHolder
     const mtlLoader = new THREE.MTLLoader();
     mtlLoader.setPath('models/');
     mtlLoader.load('3DModel.mtl', (materials) => {
@@ -338,7 +473,6 @@
       objLoader.setMaterials(materials);
       objLoader.setPath('models/');
       objLoader.load('3DModel.obj', (obj) => {
-        // Calculate bbox and normalize
         const box = new THREE.Box3().setFromObject(obj);
         const size = new THREE.Vector3();
         box.getSize(size);
@@ -355,29 +489,14 @@
           }
         });
 
-        charRoot.add(obj);
-
-        // Hide loader
+        modelHolder.add(obj);
         document.getElementById('loading-overlay').style.display = 'none';
       }, (xhr) => {
         if (xhr.lengthComputable) {
           const pct = Math.round((xhr.loaded / xhr.total) * 100);
           document.getElementById('loader-bar').style.width = pct + '%';
         }
-      }, (err) => {
-        console.error('Failed to load OBJ:', err);
-        document.getElementById('loading-text').innerHTML =
-          '<span style="color:#ef4444;font-weight:bold;">Awaiting 3DModel.obj</span><br><br>' +
-          '<span style="color:#94a3b8;font-size:11px;">Please copy <b>3DModel.obj</b>, <b>3DModel.mtl</b>, and <b>3DModel.jpg</b> into:<br>' +
-          '<code style="color:#38bdf8;">android/app/src/main/assets/game/models/</code><br>then re-build the APK.</span>';
       });
-    }, undefined, (err) => {
-      console.error('Failed to load MTL:', err);
-      document.getElementById('loading-text').innerHTML =
-        '<span style="color:#ef4444;font-weight:bold;">Awaiting Character Assets</span><br><br>' +
-        '<span style="color:#94a3b8;font-size:11px;">Copy your three files into:<br>' +
-        '<code style="color:#38bdf8;">android/app/src/main/assets/game/models/</code><br><br>' +
-        '• 3DModel.obj<br>• 3DModel.mtl<br>• 3DModel.jpg</span>';
     });
 
     // Player Physics State
@@ -394,6 +513,9 @@
       const now = performance.now();
       const dt = Math.min(0.045, (now - lastTime) / 1000);
       lastTime = now;
+
+      // Update AnimationMixer
+      mixer.update(dt);
 
       // Moving platform update
       movingMesh.position.x = Math.sin(now * 0.002) * 3.5;
@@ -415,18 +537,33 @@
         }
       });
 
-      // Player Movement
+      // 1. Synthesize input with keyboard orientation fix:
+      // Front key W / Up moves forward (+Z towards platforms)!
+      let inputForward = -joyY;
+      let inputRight = joyX;
+      if (keys.forward) inputForward += 1;
+      if (keys.backward) inputForward -= 1;
+      if (keys.right) inputRight += 1;
+      if (keys.left) inputRight -= 1;
+
+      const inputLen = Math.hypot(inputForward, inputRight);
+      if (inputLen > 1) {
+        inputForward /= inputLen;
+        inputRight /= inputLen;
+      }
+
+      // 2. Compute Movement along camera orientation (camera looks into +Z when yaw=0)
       const moveSpeed = isRunning ? 8.0 : 5.0;
-      if (Math.hypot(joyX, joyY) > 0.1) {
-        playerVel.x = joyX * moveSpeed;
-        playerVel.z = joyY * moveSpeed;
-        playerFacing = Math.atan2(joyX, joyY);
+      if (inputLen > 0.08) {
+        playerVel.x = inputRight * moveSpeed;
+        playerVel.z = inputForward * moveSpeed;
+        playerFacing = Math.atan2(inputRight, inputForward);
       } else {
         playerVel.x *= 0.8;
         playerVel.z *= 0.8;
       }
 
-      // Jump & Gravity
+      // 3. Jump & Gravity
       if (isJumping && isGrounded) {
         playerVel.y = 10.0;
         isGrounded = false;
@@ -439,7 +576,7 @@
       playerPos.z += playerVel.z * dt;
       playerPos.y += playerVel.y * dt;
 
-      // Platform collisions
+      // 4. Platform collisions
       let grounded = false;
       platforms.forEach((p) => {
         const b = p.bbox;
@@ -454,6 +591,18 @@
       });
       isGrounded = grounded;
 
+      // 5. Animation cycling based on playerVel and isGrounded in animate()
+      if (isAttacking) {
+        setAnimationState('punch');
+      } else if (!isGrounded) {
+        setAnimationState('jump');
+      } else if (Math.hypot(playerVel.x, playerVel.z) > 0.25) {
+        actions.walk.timeScale = isRunning ? 1.4 : 1.0;
+        setAnimationState('walk');
+      } else {
+        setAnimationState('idle');
+      }
+
       // Void fall reset
       if (playerPos.y < -8) {
         playerPos.set(0, 1.2, 0);
@@ -467,11 +616,11 @@
       charRoot.position.copy(playerPos);
       charRoot.rotation.y = playerFacing;
 
-      // Camera follow
-      camera.position.x = playerPos.x - Math.sin(0) * 5.5;
-      camera.position.y = playerPos.y + 3.0;
-      camera.position.z = playerPos.z + 5.5;
-      camera.lookAt(playerPos.x, playerPos.y + 1.2, playerPos.z);
+      // Camera follow behind and above
+      camera.position.x = playerPos.x;
+      camera.position.y = playerPos.y + 2.8;
+      camera.position.z = playerPos.z - 5.5; // Behind player looking forward (+Z)
+      camera.lookAt(playerPos.x, playerPos.y + 1.2, playerPos.z + 2.0);
 
       renderer.render(scene, camera);
     }

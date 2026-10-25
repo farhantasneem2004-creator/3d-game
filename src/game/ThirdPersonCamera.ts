@@ -8,14 +8,21 @@ export class ThirdPersonCamera {
   // Orbit controls
   public yaw: number = 0; // horizontal angle in radians
   public pitch: number = 0.28; // vertical angle in radians (downwards view)
-  public distance: number = 5.6;
-  public height: number = 2.4;
+  public distance: number = 5.2;
+  public height: number = 2.2;
+
+  // Aiming (Over-the-shoulder GTA style)
+  public isAiming: boolean = false;
+  private currentAimWeight: number = 0; // 0 = standard, 1 = over shoulder
+  private defaultFov: number = 60;
+  private aimFov: number = 48;
 
   // Pitch constraints
-  private minPitch: number = -0.15;
+  private minPitch: number = -0.65;
   private maxPitch: number = 1.1;
 
   constructor(fov = 60, aspect = 16 / 9, near = 0.1, far = 1000) {
+    this.defaultFov = fov;
     this.camera = new THREE.PerspectiveCamera(fov, aspect, near, far);
     this.currentPosition = new THREE.Vector3(0, 5, 8);
     this.currentLookAt = new THREE.Vector3(0, 1, 0);
@@ -23,44 +30,87 @@ export class ThirdPersonCamera {
   }
 
   /**
-   * Handle touch drag rotation delta
+   * Handle touch/mouse drag rotation delta
    */
   public handleDrag(deltaX: number, deltaY: number) {
-    const sensitivity = 0.005;
+    const sensitivity = this.isAiming ? 0.0035 : 0.005;
     this.yaw -= deltaX * sensitivity;
     this.pitch += deltaY * sensitivity;
     this.pitch = Math.max(this.minPitch, Math.min(this.maxPitch, this.pitch));
   }
 
   /**
-   * Smooth follow update loop
+   * Returns exact normalized horizontal forward and right vectors for camera-relative movement.
+   * Forward: projected direction camera is facing.
+   * Right: Forward x UP (guarantees +X is screen right when looking forward).
+   */
+  public getHorizontalVectors(): { forward: THREE.Vector3; right: THREE.Vector3 } {
+    const forward = new THREE.Vector3();
+    this.camera.getWorldDirection(forward);
+    forward.y = 0;
+    if (forward.lengthSq() < 0.0001) {
+      forward.set(Math.sin(this.yaw), 0, Math.cos(this.yaw));
+    } else {
+      forward.normalize();
+    }
+
+    // Right vector = Forward x UP (in Three.js right-handed coordinate system: (0,0,-1) x (0,1,0) = (1,0,0) = Right)
+    const right = new THREE.Vector3().crossVectors(forward, new THREE.Vector3(0, 1, 0)).normalize();
+    return { forward, right };
+  }
+
+  /**
+   * Smooth follow update loop with GTA-style over-the-shoulder aiming mode
    */
   public update(
     dt: number,
     targetPos: THREE.Vector3,
-    targetFacingAngle: number,
-    isMoving: boolean,
+    _targetFacingAngle: number,
+    _isMoving: boolean,
     obstacles: THREE.Object3D[] = []
   ) {
-    // If moving forward and no active touch drag, gently damp yaw towards player facing
-    if (isMoving) {
-      // Subtle auto-orient camera behind player
-      const idealYaw = targetFacingAngle;
-      const angleDiff = THREE.MathUtils.euclideanModulo(idealYaw - this.yaw + Math.PI, Math.PI * 2) - Math.PI;
-      this.yaw += angleDiff * Math.min(1.0, dt * 1.5);
+    // 1. Smoothly blend aiming weight (over-the-shoulder transition)
+    const targetAimWeight = this.isAiming ? 1.0 : 0.0;
+    this.currentAimWeight = THREE.MathUtils.damp(this.currentAimWeight, targetAimWeight, 14.0, dt);
+
+    // 2. Adjust FOV for aim zoom
+    const targetFov = THREE.MathUtils.lerp(this.defaultFov, this.aimFov, this.currentAimWeight);
+    if (Math.abs(this.camera.fov - targetFov) > 0.1) {
+      this.camera.fov = targetFov;
+      this.camera.updateProjectionMatrix();
     }
 
-    // Calculate ideal camera position based on target and spherical orbit coordinates
-    const horizontalDist = this.distance * Math.cos(this.pitch);
-    const verticalDist = this.distance * Math.sin(this.pitch) + this.height;
+    // 3. Compute camera distance and heights based on aim state
+    // Standard: 5.2m back, 2.2m up. Aiming: 2.6m back, 1.4m up, 0.65m right shoulder offset
+    const currentDist = THREE.MathUtils.lerp(5.2, 2.6, this.currentAimWeight);
+    const currentHeight = THREE.MathUtils.lerp(2.2, 1.4, this.currentAimWeight);
+    const shoulderOffset = THREE.MathUtils.lerp(0.0, 0.65, this.currentAimWeight);
 
-    // Position behind character relative to yaw
-    const idealX = targetPos.x - Math.sin(this.yaw) * horizontalDist;
-    const idealZ = targetPos.z - Math.cos(this.yaw) * horizontalDist;
-    const idealY = Math.max(targetPos.y + 0.8, targetPos.y + verticalDist);
+    const horizontalDist = currentDist * Math.cos(this.pitch);
+    const verticalDist = currentDist * Math.sin(this.pitch) + currentHeight;
+
+    // Calculate base position behind character relative to yaw
+    let idealX = targetPos.x - Math.sin(this.yaw) * horizontalDist;
+    let idealZ = targetPos.z - Math.cos(this.yaw) * horizontalDist;
+    let idealY = targetPos.y + verticalDist;
+
+    // Apply right-shoulder offset when aiming
+    if (shoulderOffset > 0.001) {
+      const { right } = this.getHorizontalVectors();
+      idealX += right.x * shoulderOffset;
+      idealZ += right.z * shoulderOffset;
+    }
 
     const idealPosition = new THREE.Vector3(idealX, idealY, idealZ);
-    const idealLookAt = new THREE.Vector3(targetPos.x, targetPos.y + 1.2, targetPos.z);
+    // Look at point: centered on torso / head (higher when aiming for reticle alignment)
+    const lookAtY = targetPos.y + THREE.MathUtils.lerp(1.1, 1.35, this.currentAimWeight);
+    const idealLookAt = new THREE.Vector3(targetPos.x, lookAtY, targetPos.z);
+
+    if (shoulderOffset > 0.001) {
+      const { right } = this.getHorizontalVectors();
+      idealLookAt.x += right.x * (shoulderOffset * 0.7);
+      idealLookAt.z += right.z * (shoulderOffset * 0.7);
+    }
 
     // Collision check: Raycast from target to ideal position to prevent clipping through platforms
     if (obstacles.length > 0) {
@@ -70,21 +120,21 @@ export class ThirdPersonCamera {
       const hits = raycaster.intersectObjects(obstacles, false);
 
       if (hits.length > 0) {
-        // Pull camera forward in front of the obstacle with 0.3m cushion
+        // Pull camera forward in front of the obstacle with 0.35m cushion
         const hitDist = hits[0].distance - 0.35;
-        if (hitDist > 1.2) {
+        if (hitDist > 1.0) {
           idealPosition.copy(idealLookAt).addScaledVector(rayDir, hitDist);
         }
       }
     }
 
     // Never let camera drop below minimum safety floor height
-    if (idealPosition.y < targetPos.y + 0.5) {
-      idealPosition.y = targetPos.y + 0.5;
+    if (idealPosition.y < targetPos.y + 0.4) {
+      idealPosition.y = targetPos.y + 0.4;
     }
 
     // Smooth frame-rate independent exponential damping
-    const dampSpeed = 10.0;
+    const dampSpeed = this.isAiming ? 20.0 : 12.0;
     this.currentPosition.x = THREE.MathUtils.damp(this.currentPosition.x, idealPosition.x, dampSpeed, dt);
     this.currentPosition.y = THREE.MathUtils.damp(this.currentPosition.y, idealPosition.y, dampSpeed, dt);
     this.currentPosition.z = THREE.MathUtils.damp(this.currentPosition.z, idealPosition.z, dampSpeed, dt);
@@ -103,6 +153,12 @@ export class ThirdPersonCamera {
   public reset(facingAngle = 0) {
     this.yaw = facingAngle;
     this.pitch = 0.28;
+    this.isAiming = false;
+    this.currentAimWeight = 0;
+  }
+
+  public setAiming(aiming: boolean) {
+    this.isAiming = aiming;
   }
 
   public updateAspect(aspect: number) {
