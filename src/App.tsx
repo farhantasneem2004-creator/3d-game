@@ -8,6 +8,7 @@ import { PhoneInstallModal } from './components/PhoneInstallModal';
 import { PauseMenu } from './components/PauseMenu';
 import { GameOverModal } from './components/GameOverModal';
 import { VictoryModal } from './components/VictoryModal';
+import { WeaponAttachmentConfig } from './game/WeaponAttachment';
 import { AlertCircle, RotateCcw } from 'lucide-react';
 
 export default function App() {
@@ -105,6 +106,10 @@ export default function App() {
 
   const handleExportGLB = useCallback(() => {
     gameEngineRef.current?.exportRiggedGLB();
+  }, []);
+
+  const handleApplyWeaponAttachment = useCallback((config: WeaponAttachmentConfig) => {
+    gameEngineRef.current?.applyWeaponAttachmentConfig(config);
   }, []);
 
   const handleWeaponSwitch = useCallback((direction: 'next' | 'prev' | number) => {
@@ -259,6 +264,7 @@ export default function App() {
             onToggleSkeleton={handleToggleSkeleton}
             onSetTestAnimation={handleSetTestAnimation}
             onApplyCustomMarkers={handleApplyCustomMarkers}
+            onApplyWeaponAttachment={handleApplyWeaponAttachment}
             onExportGLB={handleExportGLB}
             isSkeletonVisible={isSkeletonVisible}
           />

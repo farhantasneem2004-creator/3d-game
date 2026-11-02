@@ -8,6 +8,15 @@ import {
   RiggingSystem,
 } from '../game/RiggingSystem';
 import { RiggingEditorCanvas } from './RiggingEditorCanvas';
+import { WeaponAttachmentCanvas } from './WeaponAttachmentCanvas';
+import {
+  WeaponAttachmentConfig,
+  DEFAULT_WEAPON_ATTACHMENT,
+  WEAPON_ATTACHMENT_PRESETS,
+  loadWeaponAttachmentConfig,
+  saveWeaponAttachmentConfig,
+} from '../game/WeaponAttachment';
+import { WeaponId, WEAPON_REGISTRY, WEAPON_ORDER } from '../game/Weapons';
 import {
   X,
   CheckCircle,
@@ -29,6 +38,8 @@ import {
   Move,
   Maximize2,
   Minimize2,
+  Crosshair,
+  Compass,
 } from 'lucide-react';
 
 interface CharacterAssetModalProps {
@@ -41,6 +52,7 @@ interface CharacterAssetModalProps {
   onToggleSkeleton?: (visible: boolean) => void;
   onSetTestAnimation?: (anim: string | null) => void;
   onApplyCustomMarkers?: (markers: MarkerPositions) => void;
+  onApplyWeaponAttachment?: (config: WeaponAttachmentConfig) => void;
   onExportGLB?: () => void;
   isSkeletonVisible?: boolean;
 }
@@ -55,14 +67,22 @@ export const CharacterAssetModal: React.FC<CharacterAssetModalProps> = ({
   onToggleSkeleton,
   onSetTestAnimation,
   onApplyCustomMarkers,
+  onApplyWeaponAttachment,
   onExportGLB,
   isSkeletonVisible = false,
 }) => {
   // Navigation tabs
-  const [activeTab, setActiveTab] = useState<'rigger' | 'anims' | 'upload'>('rigger');
+  const [activeTab, setActiveTab] = useState<'rigger' | 'weapon' | 'anims' | 'upload'>('rigger');
 
   // Fullscreen studio state (fullscreen by default as requested in Priority 1)
   const [isFullscreen, setIsFullscreen] = useState<boolean>(true);
+
+  // Weapon Attachment Editor State
+  const [weaponConfig, setWeaponConfig] = useState<WeaponAttachmentConfig>(() => loadWeaponAttachmentConfig());
+  const [activePreviewWeapon, setActivePreviewWeapon] = useState<WeaponId>('pistol');
+  const [weaponCameraPreset, setWeaponCameraPreset] = useState<'front' | 'side' | 'back' | 'free'>('side');
+  const [weaponTestPose, setWeaponTestPose] = useState<'aim' | 'carry' | 'reload' | 'walk'>('aim');
+  const [showSocketGizmo, setShowSocketGizmo] = useState<boolean>(true);
 
   // Prevent background scrolling while studio is open
   useEffect(() => {
@@ -203,6 +223,60 @@ export const CharacterAssetModal: React.FC<CharacterAssetModalProps> = ({
     onToggleSkeleton?.(next);
   };
 
+  // Weapon Attachment Handlers
+  const handleResetWeaponAttachment = () => {
+    setWeaponConfig({ ...DEFAULT_WEAPON_ATTACHMENT });
+    setStatusMessage('Weapon socket reset to default aligned values.');
+    setTimeout(() => setStatusMessage(null), 3500);
+  };
+
+  const handleSelectPreset = (key: string) => {
+    const preset = WEAPON_ATTACHMENT_PRESETS[key];
+    if (preset) {
+      setWeaponConfig({ ...preset.config });
+      setStatusMessage(`Applied grip preset: ${preset.label}`);
+      setTimeout(() => setStatusMessage(null), 3000);
+    }
+  };
+
+  const handleSaveWeaponAttachment = () => {
+    saveWeaponAttachmentConfig(weaponConfig);
+    setStatusMessage('💾 Weapon attachment settings saved locally!');
+    setTimeout(() => setStatusMessage(null), 3500);
+  };
+
+  const handleApplyWeaponToGame = () => {
+    saveWeaponAttachmentConfig(weaponConfig);
+    onApplyWeaponAttachment?.(weaponConfig);
+    setStatusMessage('🔫 Weapon socket attachment applied to live character!');
+    setTimeout(() => setStatusMessage(null), 3500);
+  };
+
+  const handleNudgePos = (axis: 'x' | 'y' | 'z', delta: number) => {
+    setWeaponConfig((prev) => ({
+      ...prev,
+      position: {
+        ...prev.position,
+        [axis]: Math.round((prev.position[axis] + delta) * 1000) / 1000,
+      },
+    }));
+  };
+
+  const handleNudgeRot = (axis: 'x' | 'y' | 'z', delta: number) => {
+    setWeaponConfig((prev) => {
+      let val = prev.rotation[axis] + delta;
+      if (val > 180) val -= 360;
+      if (val < -180) val += 360;
+      return {
+        ...prev,
+        rotation: {
+          ...prev.rotation,
+          [axis]: val,
+        },
+      };
+    });
+  };
+
   const selectedDef = selectedMarkerId
     ? MARKER_DEFINITIONS.find((m) => m.id === selectedMarkerId)
     : null;
@@ -284,6 +358,19 @@ export const CharacterAssetModal: React.FC<CharacterAssetModalProps> = ({
 
           <button
             type="button"
+            onClick={() => setActiveTab('weapon')}
+            className={`px-3.5 py-1.5 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer ${
+              activeTab === 'weapon'
+                ? 'bg-cyan-600 text-white shadow-lg shadow-cyan-600/30 border border-cyan-400'
+                : 'bg-slate-800/80 text-slate-300 hover:text-white hover:bg-slate-800 border border-slate-700'
+            }`}
+          >
+            <Crosshair className="w-3.5 h-3.5" />
+            <span>Weapon Attachment Editor</span>
+          </button>
+
+          <button
+            type="button"
             onClick={() => setActiveTab('anims')}
             className={`px-3.5 py-1.5 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer ${
               activeTab === 'anims'
@@ -318,7 +405,7 @@ export const CharacterAssetModal: React.FC<CharacterAssetModalProps> = ({
         )}
 
         {/* Content Area */}
-        <div className={`mt-2 flex-1 min-h-0 ${activeTab === 'rigger' ? 'flex flex-col overflow-hidden' : 'overflow-y-auto pr-1'}`}>
+        <div className={`mt-2 flex-1 min-h-0 ${activeTab === 'rigger' || activeTab === 'weapon' ? 'flex flex-col overflow-hidden' : 'overflow-y-auto pr-1'}`}>
           {/* TAB 1: MIXAMO RIGGER WORKSPACE */}
           {activeTab === 'rigger' && (
             <div className="flex-1 min-h-0 flex flex-col space-y-2.5 h-full">
@@ -551,7 +638,446 @@ export const CharacterAssetModal: React.FC<CharacterAssetModalProps> = ({
             </div>
           )}
 
-          {/* TAB 2: ANIMATIONS & DIAGNOSTICS */}
+          {/* TAB 2: WEAPON ATTACHMENT EDITOR */}
+          {activeTab === 'weapon' && (
+            <div className="flex-1 min-h-0 flex flex-col space-y-2.5 h-full">
+              {/* Toolbar */}
+              <div className="flex flex-wrap items-center justify-between gap-2 p-2 bg-slate-800/70 border border-slate-700/60 rounded-2xl text-xs shrink-0">
+                {/* Left Controls: Grips, Camera & Poses */}
+                <div className="flex flex-wrap items-center gap-2">
+                  {/* Grip Presets */}
+                  <div className="flex items-center gap-1 bg-slate-900 px-2 py-1 rounded-lg border border-slate-700">
+                    <span className="text-[10px] uppercase font-bold text-slate-400 mr-1">Preset Grip:</span>
+                    {Object.entries(WEAPON_ATTACHMENT_PRESETS).map(([key, val]) => (
+                      <button
+                        key={key}
+                        type="button"
+                        onClick={() => handleSelectPreset(key)}
+                        className={`px-2 py-0.5 rounded text-[11px] font-bold transition-colors cursor-pointer ${
+                          activePreviewWeapon === key
+                            ? 'bg-cyan-600 text-white'
+                            : 'bg-slate-800 text-slate-300 hover:text-white hover:bg-slate-700'
+                        }`}
+                      >
+                        {val.label.replace(' Grip', '')}
+                      </button>
+                    ))}
+                  </div>
+
+                  {/* Camera Views */}
+                  <div className="flex items-center gap-1 bg-slate-900 px-2 py-1 rounded-lg border border-slate-700">
+                    <Compass className="w-3.5 h-3.5 text-cyan-400 mr-0.5" />
+                    <span className="text-[10px] uppercase font-bold text-slate-400 mr-1">View:</span>
+                    {(['side', 'front', 'back', 'free'] as const).map((cam) => (
+                      <button
+                        key={cam}
+                        type="button"
+                        onClick={() => setWeaponCameraPreset(cam)}
+                        className={`px-2 py-0.5 rounded text-[11px] font-bold capitalize transition-colors cursor-pointer ${
+                          weaponCameraPreset === cam
+                            ? 'bg-cyan-600 text-white'
+                            : 'bg-slate-800 text-slate-300 hover:text-white hover:bg-slate-700'
+                        }`}
+                      >
+                        {cam}
+                      </button>
+                    ))}
+                  </div>
+
+                  {/* Test Poses */}
+                  <div className="flex items-center gap-1 bg-slate-900 px-2 py-1 rounded-lg border border-slate-700">
+                    <Sparkles className="w-3.5 h-3.5 text-amber-400 mr-0.5" />
+                    <span className="text-[10px] uppercase font-bold text-slate-400 mr-1">Test Grip:</span>
+                    {(['aim', 'carry', 'reload', 'walk'] as const).map((pose) => (
+                      <button
+                        key={pose}
+                        type="button"
+                        onClick={() => setWeaponTestPose(pose)}
+                        className={`px-2 py-0.5 rounded text-[11px] font-bold capitalize transition-colors cursor-pointer ${
+                          weaponTestPose === pose
+                            ? 'bg-amber-600 text-white'
+                            : 'bg-slate-800 text-slate-300 hover:text-white hover:bg-slate-700'
+                        }`}
+                      >
+                        {pose === 'aim' ? 'Aim Sight' : pose === 'carry' ? 'Carry' : pose === 'reload' ? 'Reload' : 'Walk'}
+                      </button>
+                    ))}
+                  </div>
+
+                  {/* Socket Gizmo */}
+                  <label className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-slate-900 border border-slate-700 text-slate-300 cursor-pointer select-none">
+                    <input
+                      type="checkbox"
+                      checked={showSocketGizmo}
+                      onChange={(e) => setShowSocketGizmo(e.target.checked)}
+                      className="rounded accent-cyan-500 w-3.5 h-3.5"
+                    />
+                    <span>Axes Gizmo</span>
+                  </label>
+
+                  <button
+                    type="button"
+                    onClick={handleResetWeaponAttachment}
+                    className="flex items-center gap-1 px-2.5 py-1 rounded-lg bg-slate-700/60 hover:bg-slate-700 border border-slate-600 text-slate-200 hover:text-white transition-colors cursor-pointer"
+                  >
+                    <RotateCcw className="w-3.5 h-3.5" />
+                    <span>Reset Attachment</span>
+                  </button>
+                </div>
+
+                {/* Primary Action Buttons */}
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={handleSaveWeaponAttachment}
+                    className="px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-600 text-slate-200 hover:text-white font-bold flex items-center gap-1.5 transition-colors cursor-pointer shadow-sm"
+                  >
+                    <span>💾 Save Attachment</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={handleApplyWeaponToGame}
+                    className="px-3.5 py-1.5 rounded-xl bg-gradient-to-r from-cyan-500 to-teal-400 hover:from-cyan-400 hover:to-teal-300 text-slate-950 font-black flex items-center gap-1.5 shadow-lg shadow-cyan-950/50 transition-all cursor-pointer"
+                  >
+                    <Sparkles className="w-3.5 h-3.5" />
+                    <span>Apply to Game</span>
+                  </button>
+                </div>
+              </div>
+
+              {/* Weapon Switcher Bar */}
+              <div className="flex items-center gap-2 px-3 py-1.5 bg-slate-900/90 border border-slate-800 rounded-xl text-xs shrink-0">
+                <span className="text-[11px] font-bold uppercase tracking-wider text-cyan-400 flex items-center gap-1">
+                  <Crosshair className="w-3.5 h-3.5" /> Test Equipped Weapon Model:
+                </span>
+                <div className="flex items-center gap-1.5 flex-wrap">
+                  {WEAPON_ORDER.map((id) => (
+                    <button
+                      key={id}
+                      type="button"
+                      onClick={() => setActivePreviewWeapon(id)}
+                      className={`px-2.5 py-1 rounded-lg font-bold text-xs transition-colors cursor-pointer border ${
+                        activePreviewWeapon === id
+                          ? 'bg-cyan-600/90 border-cyan-400 text-white shadow-md'
+                          : 'bg-slate-800 border-slate-700 text-slate-300 hover:bg-slate-700 hover:text-white'
+                      }`}
+                    >
+                      {WEAPON_REGISTRY[id].name}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* 3D Viewport + Attachment Control Panel Layout */}
+              <div className="grid grid-cols-1 lg:grid-cols-12 gap-3 flex-1 min-h-0 h-full">
+                {/* 3D Viewport */}
+                <div className="lg:col-span-8 xl:col-span-8 h-full min-h-[350px]">
+                  <WeaponAttachmentCanvas
+                    modelGroup={modelGroup || null}
+                    currentMarkers={markers}
+                    attachmentConfig={weaponConfig}
+                    activeWeaponId={activePreviewWeapon}
+                    cameraPreset={weaponCameraPreset}
+                    testPose={weaponTestPose}
+                    showSocketGizmo={showSocketGizmo}
+                  />
+                </div>
+
+                {/* Right Side Attachment Controls Inspector */}
+                <div className="lg:col-span-4 xl:col-span-4 h-full bg-slate-800/60 rounded-2xl p-3 border border-slate-700/60 flex flex-col gap-2.5 overflow-y-auto">
+                  {/* Position X, Y, Z */}
+                  <div className="bg-slate-900/90 rounded-xl p-3 border border-slate-700/80 shadow-md">
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-cyan-400 block mb-2">
+                      Socket Position Offset (Meters)
+                    </span>
+
+                    {/* Position X */}
+                    <div className="mb-2">
+                      <div className="flex justify-between items-center text-xs mb-1">
+                        <span className="text-slate-300 font-semibold">Position X (Lateral):</span>
+                        <div className="flex items-center gap-1">
+                          <button
+                            type="button"
+                            onClick={() => handleNudgePos('x', -0.005)}
+                            className="px-1.5 py-0.5 rounded bg-slate-800 hover:bg-slate-700 text-slate-300 text-[10px]"
+                          >
+                            -0.005
+                          </button>
+                          <span className="font-mono text-cyan-300 w-12 text-right">{weaponConfig.position.x.toFixed(3)}</span>
+                          <button
+                            type="button"
+                            onClick={() => handleNudgePos('x', 0.005)}
+                            className="px-1.5 py-0.5 rounded bg-slate-800 hover:bg-slate-700 text-slate-300 text-[10px]"
+                          >
+                            +0.005
+                          </button>
+                        </div>
+                      </div>
+                      <input
+                        type="range"
+                        min="-0.15"
+                        max="0.15"
+                        step="0.002"
+                        value={weaponConfig.position.x}
+                        onChange={(e) =>
+                          setWeaponConfig((prev) => ({
+                            ...prev,
+                            position: { ...prev.position, x: parseFloat(e.target.value) },
+                          }))
+                        }
+                        className="w-full accent-cyan-500 cursor-pointer h-1.5 bg-slate-800 rounded-lg"
+                      />
+                    </div>
+
+                    {/* Position Y */}
+                    <div className="mb-2">
+                      <div className="flex justify-between items-center text-xs mb-1">
+                        <span className="text-slate-300 font-semibold">Position Y (Forearm Axis):</span>
+                        <div className="flex items-center gap-1">
+                          <button
+                            type="button"
+                            onClick={() => handleNudgePos('y', -0.005)}
+                            className="px-1.5 py-0.5 rounded bg-slate-800 hover:bg-slate-700 text-slate-300 text-[10px]"
+                          >
+                            -0.005
+                          </button>
+                          <span className="font-mono text-cyan-300 w-12 text-right">{weaponConfig.position.y.toFixed(3)}</span>
+                          <button
+                            type="button"
+                            onClick={() => handleNudgePos('y', 0.005)}
+                            className="px-1.5 py-0.5 rounded bg-slate-800 hover:bg-slate-700 text-slate-300 text-[10px]"
+                          >
+                            +0.005
+                          </button>
+                        </div>
+                      </div>
+                      <input
+                        type="range"
+                        min="-0.20"
+                        max="0.10"
+                        step="0.002"
+                        value={weaponConfig.position.y}
+                        onChange={(e) =>
+                          setWeaponConfig((prev) => ({
+                            ...prev,
+                            position: { ...prev.position, y: parseFloat(e.target.value) },
+                          }))
+                        }
+                        className="w-full accent-cyan-500 cursor-pointer h-1.5 bg-slate-800 rounded-lg"
+                      />
+                    </div>
+
+                    {/* Position Z */}
+                    <div>
+                      <div className="flex justify-between items-center text-xs mb-1">
+                        <span className="text-slate-300 font-semibold">Position Z (Palm Depth):</span>
+                        <div className="flex items-center gap-1">
+                          <button
+                            type="button"
+                            onClick={() => handleNudgePos('z', -0.005)}
+                            className="px-1.5 py-0.5 rounded bg-slate-800 hover:bg-slate-700 text-slate-300 text-[10px]"
+                          >
+                            -0.005
+                          </button>
+                          <span className="font-mono text-cyan-300 w-12 text-right">{weaponConfig.position.z.toFixed(3)}</span>
+                          <button
+                            type="button"
+                            onClick={() => handleNudgePos('z', 0.005)}
+                            className="px-1.5 py-0.5 rounded bg-slate-800 hover:bg-slate-700 text-slate-300 text-[10px]"
+                          >
+                            +0.005
+                          </button>
+                        </div>
+                      </div>
+                      <input
+                        type="range"
+                        min="-0.15"
+                        max="0.15"
+                        step="0.002"
+                        value={weaponConfig.position.z}
+                        onChange={(e) =>
+                          setWeaponConfig((prev) => ({
+                            ...prev,
+                            position: { ...prev.position, z: parseFloat(e.target.value) },
+                          }))
+                        }
+                        className="w-full accent-cyan-500 cursor-pointer h-1.5 bg-slate-800 rounded-lg"
+                      />
+                    </div>
+                  </div>
+
+                  {/* Rotation X, Y, Z (degrees) */}
+                  <div className="bg-slate-900/90 rounded-xl p-3 border border-slate-700/80 shadow-md">
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-amber-400 block mb-2">
+                      Socket Rotation Orientation (Degrees)
+                    </span>
+
+                    {/* Rotation X */}
+                    <div className="mb-2">
+                      <div className="flex justify-between items-center text-xs mb-1">
+                        <span className="text-slate-300 font-semibold">Pitch X (Elevation):</span>
+                        <div className="flex items-center gap-1">
+                          <button
+                            type="button"
+                            onClick={() => handleNudgeRot('x', -5)}
+                            className="px-1.5 py-0.5 rounded bg-slate-800 hover:bg-slate-700 text-slate-300 text-[10px]"
+                          >
+                            -5°
+                          </button>
+                          <span className="font-mono text-amber-300 w-12 text-right">{weaponConfig.rotation.x}°</span>
+                          <button
+                            type="button"
+                            onClick={() => handleNudgeRot('x', 5)}
+                            className="px-1.5 py-0.5 rounded bg-slate-800 hover:bg-slate-700 text-slate-300 text-[10px]"
+                          >
+                            +5°
+                          </button>
+                        </div>
+                      </div>
+                      <input
+                        type="range"
+                        min="-180"
+                        max="180"
+                        step="2"
+                        value={weaponConfig.rotation.x}
+                        onChange={(e) =>
+                          setWeaponConfig((prev) => ({
+                            ...prev,
+                            rotation: { ...prev.rotation, x: parseFloat(e.target.value) },
+                          }))
+                        }
+                        className="w-full accent-amber-500 cursor-pointer h-1.5 bg-slate-800 rounded-lg"
+                      />
+                    </div>
+
+                    {/* Rotation Y */}
+                    <div className="mb-2">
+                      <div className="flex justify-between items-center text-xs mb-1">
+                        <span className="text-slate-300 font-semibold">Yaw Y (Sightline Azimuth):</span>
+                        <div className="flex items-center gap-1">
+                          <button
+                            type="button"
+                            onClick={() => handleNudgeRot('y', -5)}
+                            className="px-1.5 py-0.5 rounded bg-slate-800 hover:bg-slate-700 text-slate-300 text-[10px]"
+                          >
+                            -5°
+                          </button>
+                          <span className="font-mono text-amber-300 w-12 text-right">{weaponConfig.rotation.y}°</span>
+                          <button
+                            type="button"
+                            onClick={() => handleNudgeRot('y', 5)}
+                            className="px-1.5 py-0.5 rounded bg-slate-800 hover:bg-slate-700 text-slate-300 text-[10px]"
+                          >
+                            +5°
+                          </button>
+                        </div>
+                      </div>
+                      <input
+                        type="range"
+                        min="-180"
+                        max="180"
+                        step="2"
+                        value={weaponConfig.rotation.y}
+                        onChange={(e) =>
+                          setWeaponConfig((prev) => ({
+                            ...prev,
+                            rotation: { ...prev.rotation, y: parseFloat(e.target.value) },
+                          }))
+                        }
+                        className="w-full accent-amber-500 cursor-pointer h-1.5 bg-slate-800 rounded-lg"
+                      />
+                    </div>
+
+                    {/* Rotation Z */}
+                    <div>
+                      <div className="flex justify-between items-center text-xs mb-1">
+                        <span className="text-slate-300 font-semibold">Roll Z (Cant / Tilt):</span>
+                        <div className="flex items-center gap-1">
+                          <button
+                            type="button"
+                            onClick={() => handleNudgeRot('z', -5)}
+                            className="px-1.5 py-0.5 rounded bg-slate-800 hover:bg-slate-700 text-slate-300 text-[10px]"
+                          >
+                            -5°
+                          </button>
+                          <span className="font-mono text-amber-300 w-12 text-right">{weaponConfig.rotation.z}°</span>
+                          <button
+                            type="button"
+                            onClick={() => handleNudgeRot('z', 5)}
+                            className="px-1.5 py-0.5 rounded bg-slate-800 hover:bg-slate-700 text-slate-300 text-[10px]"
+                          >
+                            +5°
+                          </button>
+                        </div>
+                      </div>
+                      <input
+                        type="range"
+                        min="-180"
+                        max="180"
+                        step="2"
+                        value={weaponConfig.rotation.z}
+                        onChange={(e) =>
+                          setWeaponConfig((prev) => ({
+                            ...prev,
+                            rotation: { ...prev.rotation, z: parseFloat(e.target.value) },
+                          }))
+                        }
+                        className="w-full accent-amber-500 cursor-pointer h-1.5 bg-slate-800 rounded-lg"
+                      />
+                    </div>
+                  </div>
+
+                  {/* Weapon Scale */}
+                  <div className="bg-slate-900/90 rounded-xl p-3 border border-slate-700/80 shadow-md">
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-400 block mb-2">
+                      Weapon Proportional Scale
+                    </span>
+                    <div className="flex justify-between items-center text-xs mb-1">
+                      <span className="text-slate-300 font-semibold">Scale Multiplier:</span>
+                      <span className="font-mono text-emerald-300 font-bold">{weaponConfig.scale.toFixed(2)}x</span>
+                    </div>
+                    <input
+                      type="range"
+                      min="0.5"
+                      max="2.0"
+                      step="0.05"
+                      value={weaponConfig.scale}
+                      onChange={(e) =>
+                        setWeaponConfig((prev) => ({
+                          ...prev,
+                          scale: parseFloat(e.target.value),
+                        }))
+                      }
+                      className="w-full accent-emerald-500 cursor-pointer h-1.5 bg-slate-800 rounded-lg"
+                    />
+                  </div>
+
+                  {/* Attachment Architecture Card */}
+                  <div className="bg-slate-950/70 rounded-xl p-3 border border-slate-800 text-[11px] text-slate-400 space-y-1">
+                    <div className="flex justify-between text-slate-300 font-semibold">
+                      <span>Socket Parent:</span>
+                      <span className="text-cyan-400 font-mono">RightHand Bone</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span>Socket Node:</span>
+                      <span className="text-slate-300 font-mono">WeaponSocketNode</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span>Barrel Orientation:</span>
+                      <span className="text-emerald-400">Points Along Sightline</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span>Storage:</span>
+                      <span className="text-slate-300 font-mono">localStorage</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* TAB 3: ANIMATIONS & DIAGNOSTICS */}
           {activeTab === 'anims' && (
             <div className="space-y-4">
               {/* Active Model Status */}

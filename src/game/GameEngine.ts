@@ -11,6 +11,7 @@ import { assetStorage } from './AssetStorage.ts';
 import { RiggingSystem, MarkerPositions } from './RiggingSystem.ts';
 import { CyberpunkCity } from './CyberpunkCity.ts';
 import { WeaponSystem, WeaponId } from './Weapons.ts';
+import { WeaponAttachmentConfig } from './WeaponAttachment.ts';
 
 export interface GameHUDState {
   health: number;
@@ -433,6 +434,10 @@ export class GameEngine {
       this.hudState.characterStats = this.character.stats;
       this.emitHUD();
     }
+  }
+
+  public applyWeaponAttachmentConfig(config: WeaponAttachmentConfig) {
+    this.character.applyWeaponAttachmentConfig(config);
   }
 
   public exportRiggedGLB() {

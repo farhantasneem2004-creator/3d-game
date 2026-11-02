@@ -285,6 +285,14 @@ Notice: All character assets (3DModel.obj, 3DModel.mtl, 3DModel.jpg) and Three.j
             </div>
           </div>
           <div className="flex items-center gap-2">
+            <a
+              href="/app-debug.apk"
+              download="app-debug.apk"
+              className="px-3.5 py-1.5 bg-cyan-600 hover:bg-cyan-500 text-white text-xs font-bold rounded-lg transition-colors flex items-center gap-1.5 cursor-pointer shadow-lg shadow-cyan-950/30 text-decoration-none"
+            >
+              <Download className="w-4 h-4" />
+              <span>Download APK (app-debug.apk)</span>
+            </a>
             <button
               type="button"
               onClick={handleDownloadZip}
@@ -292,7 +300,7 @@ Notice: All character assets (3DModel.obj, 3DModel.mtl, 3DModel.jpg) and Three.j
               className="px-3.5 py-1.5 bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 text-white text-xs font-bold rounded-lg transition-colors flex items-center gap-1.5 cursor-pointer shadow-lg shadow-emerald-950/30"
             >
               <Download className="w-4 h-4" />
-              <span>{isZipping ? 'Creating ZIP...' : 'Download Project (.zip)'}</span>
+              <span>{isZipping ? 'Creating ZIP...' : 'Project (.zip)'}</span>
             </button>
             <button
               type="button"

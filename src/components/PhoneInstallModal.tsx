@@ -172,37 +172,48 @@ export const PhoneInstallModal: React.FC<PhoneInstallModalProps> = ({
             </div>
           </div>
 
-          {/* METHOD 2: Build & Install Native Android APK */}
+          {/* METHOD 2: Direct Install Android APK via USB Cable or Download */}
           <div className="bg-slate-800/40 border border-slate-700/60 rounded-2xl p-5">
             <div className="flex items-center justify-between mb-2">
               <div className="flex items-center gap-2">
-                <span className="flex items-center justify-center w-6 h-6 rounded-full bg-emerald-500 text-slate-950 font-black text-xs">2</span>
-                <h3 className="font-extrabold text-white text-sm">Build & Sideload Native APK (Android Studio)</h3>
+                <span className="flex items-center justify-center w-6 h-6 rounded-full bg-cyan-500 text-slate-950 font-black text-xs">2</span>
+                <h3 className="font-extrabold text-white text-sm">Direct APK Install or USB Cable Sideload</h3>
               </div>
-              <span className="text-[10px] font-bold text-slate-400">Offline Standalone APK</span>
+              <span className="text-[10px] font-bold text-cyan-400 bg-cyan-950/80 px-2.5 py-0.5 rounded-full border border-cyan-800">
+                app-debug.apk Ready
+              </span>
             </div>
 
             <p className="text-xs text-slate-400 mb-3.5 leading-relaxed">
-              If you want an independent <code>.apk</code> file packaged with AndroidX WebKit WebViewAssetLoader that runs completely offline with no network connection:
+              Install the bundled 3D Cyberpunk Platformer directly on your phone. All models, textures, weapons, and audio are packaged 100% inside the APK:
             </p>
 
-            <div className="bg-slate-950 p-3 rounded-xl border border-slate-800 font-mono text-xs text-emerald-400 space-y-1 mb-3.5">
-              <p className="text-slate-500 text-[10px]"># 1. Inside the android/ folder, build the APK:</p>
-              <p>./gradlew assembleDebug</p>
-              <p className="text-slate-500 text-[10px] mt-1.5"># 2. Connect your phone with USB Debugging enabled & install:</p>
-              <p>adb install -r app/build/outputs/apk/debug/app-debug.apk</p>
+            <div className="bg-slate-950 p-3 rounded-xl border border-slate-800 font-mono text-xs text-cyan-300 space-y-1 mb-3.5">
+              <p className="text-slate-500 text-[10px]"># Option A: Automatic 1-Click USB Install (Windows PC):</p>
+              <p className="text-white font-bold">install_game.bat</p>
+              <p className="text-slate-500 text-[10px] mt-1.5"># Option B: ADB command line:</p>
+              <p>adb install -r android/app/build/outputs/apk/debug/app-debug.apk</p>
             </div>
 
-            <div className="flex justify-end">
+            <div className="flex items-center justify-between flex-wrap gap-2 pt-1">
+              <a
+                href="/app-debug.apk"
+                download="app-debug.apk"
+                className="px-4 py-2 bg-gradient-to-r from-cyan-500 to-teal-400 hover:from-cyan-400 hover:to-teal-300 text-slate-950 font-black text-xs rounded-xl transition-all flex items-center gap-1.5 cursor-pointer shadow-lg shadow-cyan-950/40 text-decoration-none"
+              >
+                <Download className="w-4 h-4" />
+                <span>Download app-debug.apk (Direct)</span>
+              </a>
+
               <button
                 type="button"
                 onClick={() => {
                   onClose();
                   onOpenAndroidProject();
                 }}
-                className="px-4 py-2 bg-emerald-700 hover:bg-emerald-600 text-white font-bold text-xs rounded-xl transition-colors flex items-center gap-1.5 cursor-pointer shadow-lg shadow-emerald-950/40"
+                className="px-3.5 py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 font-bold text-xs rounded-xl transition-colors flex items-center gap-1.5 cursor-pointer border border-slate-700"
               >
-                <span>View Android Studio Project & Download ZIP</span>
+                <span>View Android Project</span>
                 <ArrowRight className="w-3.5 h-3.5" />
               </button>
             </div>

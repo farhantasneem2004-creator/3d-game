@@ -4,6 +4,11 @@ import { MTLLoader } from 'three/examples/jsm/loaders/MTLLoader.js';
 import { AutoRigger, RiggedCharacter } from './AutoRigger.ts';
 import { CharacterAnimator, AnimationStateName } from './CharacterAnimator.ts';
 import { RiggingSystem, MarkerPositions } from './RiggingSystem.ts';
+import {
+  WeaponAttachmentConfig,
+  loadWeaponAttachmentConfig,
+  applySocketTransform,
+} from './WeaponAttachment.ts';
 
 export interface ModelStats {
   vertexCount: number;
@@ -63,11 +68,22 @@ export class CharacterController {
     this.root.add(this.modelContainer);
   }
 
+  private weaponAttachmentConfig: WeaponAttachmentConfig = loadWeaponAttachmentConfig();
+
   /**
    * Attaches weapon container to character's right hand bone or hand anchor socket
    */
   public attachWeapon(weaponGroup: THREE.Group) {
     this.attachedWeaponGroup = weaponGroup;
+    this.rebindWeaponSocket();
+  }
+
+  public getWeaponAttachmentConfig(): WeaponAttachmentConfig {
+    return { ...this.weaponAttachmentConfig };
+  }
+
+  public applyWeaponAttachmentConfig(config: WeaponAttachmentConfig) {
+    this.weaponAttachmentConfig = { ...config };
     this.rebindWeaponSocket();
   }
 
@@ -81,11 +97,11 @@ export class CharacterController {
       if (!socket) {
         socket = new THREE.Group();
         socket.name = 'WeaponSocketNode';
-        // Calibrated hand socket transform: grips weapon naturally in palm, barrel pointing forward
-        socket.position.set(0.01, -0.05, 0.03);
-        socket.rotation.set(-Math.PI / 2, 0, 0);
         this.riggedCharacter.bones.rightHand.add(socket);
       }
+      // Apply calibrated transform (barrel forward, grip in palm, trigger aligned)
+      applySocketTransform(socket, this.weaponAttachmentConfig);
+
       socket.add(this.attachedWeaponGroup);
       this.attachedWeaponGroup.position.set(0, 0, 0);
       this.attachedWeaponGroup.rotation.set(0, 0, 0);

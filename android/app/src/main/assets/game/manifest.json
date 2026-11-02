@@ -1,0 +1,26 @@
+{
+  "id": "/",
+  "name": "3D Android Platformer",
+  "short_name": "Platformer3D",
+  "description": "Playable 3D platformer with custom 3D character loading, third-person follow camera, and virtual touch controls.",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "landscape",
+  "background_color": "#0284c7",
+  "theme_color": "#0f172a",
+  "icons": [
+    {
+      "src": "/icon.svg",
+      "sizes": "192x192 512x512",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    },
+    {
+      "src": "/icon.svg",
+      "sizes": "512x512",
+      "type": "image/svg+xml",
+      "purpose": "maskable"
+    }
+  ]
+}
